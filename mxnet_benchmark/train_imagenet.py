@@ -154,6 +154,7 @@ def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num
         shuffle             = True,
         batch_size          = batch_size,
         label_width         = 1,
+        resize              = 224,
         data_shape          = (3, 224, 224),
         mean_r              = mean_rgb[0],
         mean_g              = mean_rgb[1],
