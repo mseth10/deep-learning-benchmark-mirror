@@ -181,7 +181,7 @@ def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num
         preprocess_threads  = num_workers,
         shuffle             = False,
         batch_size          = batch_size,
-        resize              = 256,
+        resize              = 224,
         label_width         = 1,
         rand_crop           = False,
         rand_mirror         = False,
