@@ -34,7 +34,7 @@ parser.add_argument('--batch-size', type=int, default=32,
                     help='training batch size per device (CPU/GPU).')
 parser.add_argument('--dtype', type=str, default='float32',
                     help='data type for training. default is float32')
-parser.add_argument('--gpus', type=str, default='0',
+parser.add_argument('--num_gpus', type=int, default=0,
                     help='number of gpus to use.')
 parser.add_argument('-j', '--num-data-workers', dest='num_workers', default=4, type=int,
                     help='number of preprocessing workers')
@@ -89,9 +89,9 @@ batch_size = opt.batch_size
 classes = 1000
 num_training_samples = 1281167
 
-num_gpus = len(opt.gpus.split(','))
+num_gpus = opt.num_gpus
 batch_size *= max(1, num_gpus)
-context = [mx.gpu(int(i)) for i in opt.gpus.split(',')] if num_gpus > 0 else [mx.cpu()]
+context = [mx.gpu(i) for i in num_gpus] if num_gpus > 0 else [mx.cpu()]
 num_workers = opt.num_workers
 
 kv = mx.kv.create(opt.kvstore)
