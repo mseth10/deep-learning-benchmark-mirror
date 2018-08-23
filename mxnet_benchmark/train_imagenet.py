@@ -208,7 +208,7 @@ def get_data_loader(data_dir, batch_size, num_workers):
         label = gluon.utils.split_and_load(batch[1], ctx_list=ctx, batch_axis=0)
         return data, label
 
-    if opt.mod == 'symbolic':
+    if opt.mode == 'symbolic':
         train_data = mx.io.NDArrayIter(
             mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
             batch_size=batch_size,
