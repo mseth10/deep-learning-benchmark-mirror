@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--metrics-suffix', type=str, help='Metrics suffix e.g. --metrics-suffix daily')
     parser.add_argument('--num-gpus', type=int, help='Numbers of gpus. e.g. --num-gpus 8')
     parser.add_argument('--command-to-execute', type=str, help='The script command that performs benchmarking')
-    parser.add_argument('--data-set', type=str, help='The data set to use for benchmarking, eg. imagenet, imagenet-480px-256px-q95')
+    parser.add_argument('--data-set', type=str, help='The data set to use for benchmarking, eg. imagenet, imagenet-480px-256px-q95', default='')
     parser.add_argument('--metrics-template', type=str, help='The template file to use for metrics pattern', default=CONFIG_TEMPLATE)
     
     args = parser.parse_args()    
