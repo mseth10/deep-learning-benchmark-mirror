@@ -206,28 +206,40 @@ def get_data_loader(data_dir, batch_size, num_workers):
         label = gluon.utils.split_and_load(batch[1], ctx_list=ctx, batch_axis=0)
         return data, label
 
-    transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomFlipLeftRight(),
-        transforms.RandomColorJitter(brightness=jitter_param, contrast=jitter_param,
-                                     saturation=jitter_param),
-        transforms.RandomLighting(lighting_param),
-        transforms.ToTensor(),
-        normalize
-    ])
-    transform_test = transforms.Compose([
-        transforms.Resize(256, keep_ratio=True),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        normalize
-    ])
+    if opt.mod == 'symbolic':
+        train_data = mx.io.NDArrayIter(
+            mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
+            batch_size=batch_size,
+        )
 
-    train_data = gluon.data.DataLoader(
-        imagenet.classification.ImageNet(data_dir, train=True).transform_first(transform_train),
-        batch_size=batch_size, shuffle=True, last_batch='discard', num_workers=num_workers)
-    val_data = gluon.data.DataLoader(
-        imagenet.classification.ImageNet(data_dir, train=False).transform_first(transform_test),
-        batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        val_data = mx.io.NDArrayIter(
+            mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
+            batch_size=batch_size,
+        )
+    else:
+        transform_train = transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomFlipLeftRight(),
+            transforms.RandomColorJitter(brightness=jitter_param, contrast=jitter_param,
+                                         saturation=jitter_param),
+            transforms.RandomLighting(lighting_param),
+            transforms.ToTensor(),
+            normalize
+        ])
+        transform_test = transforms.Compose([
+            transforms.Resize(256, keep_ratio=True),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize
+        ])
+
+        train_data = gluon.data.DataLoader(
+            imagenet.classification.ImageNet(data_dir, train=True).transform_first(transform_train),
+            batch_size=batch_size, shuffle=True, last_batch='discard', num_workers=num_workers)
+        val_data = gluon.data.DataLoader(
+            imagenet.classification.ImageNet(data_dir, train=False).transform_first(transform_test),
+            batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
 
     if 'sync' in opt.kvstore:
         raise ValueError("Need to resize iterator for distributed training to not hang at the end")
