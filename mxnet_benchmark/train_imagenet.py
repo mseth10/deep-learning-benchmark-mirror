@@ -211,11 +211,13 @@ def get_data_loader(data_dir, batch_size, num_workers):
     if opt.mode == 'symbolic':
         train_data = mx.io.NDArrayIter(
             mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
+            label=mx.nd.array(range(opt.dataset_size)),
             batch_size=batch_size,
         )
 
         val_data = mx.io.NDArrayIter(
             mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
+            label=mx.nd.array(range(opt.dataset_size)),
             batch_size=batch_size,
         )
     else:
