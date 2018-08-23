@@ -32,6 +32,8 @@ parser.add_argument('--use-rec', action='store_true',
                     help='use image record iter for data input. default is false.')
 parser.add_argument('--batch-size', type=int, default=32,
                     help='training batch size per device (CPU/GPU).')
+parser.add_argument('--dataset-size', type=int, default=32,
+                    help='training batch size per device (CPU/GPU).')
 parser.add_argument('--dtype', type=str, default='float32',
                     help='data type for training. default is float32')
 parser.add_argument('--num_gpus', type=int, default=0,
