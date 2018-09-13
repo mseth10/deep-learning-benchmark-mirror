@@ -243,7 +243,7 @@ def get_data_loader(data_dir, batch_size, num_workers):
             batch_size=batch_size, shuffle=True, last_batch='discard', num_workers=num_workers)
         # val_data = gluon.data.DataLoader(
         #     imagenet.classification.ImageNet(data_dir, train=False).transform_first(transform_test),
-        #     batch_size=batch_size, shuffle=False, num_workers=num_workers)'''
+        #     batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
 
     if 'sync' in opt.kvstore:
@@ -330,7 +330,7 @@ def train(ctx):
 
         # err_top1_val, err_top5_val = test(ctx, val_data)
 
-        logging.info('[Epoch %d] Train-accuracy=%f'%(epoch, top1))
+        # logging.info('[Epoch %d] Train-accuracy=%f'%(epoch, top1))
         logging.info('[Epoch %d] Speed: %d samples/sec\tTime cost=%f'%(epoch, throughput, time.time()-tic))
         # logging.info('[Epoch %d] Validation-accuracy=%f'%(epoch, 1 - err_top1_val))
         # logging.info('[Epoch %d] Validation-top_k_accuracy_5=%f'%(epoch, 1 - err_top5_val))

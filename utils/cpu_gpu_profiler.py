@@ -87,6 +87,7 @@ class Profiler(object):
     def __init__(self, ret_dict, num_gpus, process_id):
         self.__ret_dict = ret_dict
         self.num_gpus = num_gpus
+        self.p = psutil.Process(process_id)
         self.cpu_usage = []
         self.cpu_mem_repeat_query = RepeatedQuery(
             interval=5,
@@ -96,9 +97,8 @@ class Profiler(object):
         )
 
     def __enter__(self):
+        self.p.cpu_percent()
         if self.num_gpus < 1:
-            self.p = psutil.Process()
-            self.p.cpu_percent()
             return self
         open("output.csv", 'a').close()
         self.__gpu_monitor_process = subprocess.Popen(
