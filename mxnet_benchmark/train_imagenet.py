@@ -134,11 +134,12 @@ net = get_model(model_name, **kwargs)
 net.cast(opt.dtype)
 
 # Two functions for reading data from record file or raw images
-def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num_workers):
+# def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num_workers):
+def get_data_rec(rec_train, rec_train_idx, batch_size, num_workers):
     rec_train = os.path.expanduser(rec_train)
     rec_train_idx = os.path.expanduser(rec_train_idx)
-    rec_val = os.path.expanduser(rec_val)
-    rec_val_idx = os.path.expanduser(rec_val_idx)
+    # rec_val = os.path.expanduser(rec_val)
+    # rec_val_idx = os.path.expanduser(rec_val_idx)
     jitter_param = 0.4
     lighting_param = 0.1
     mean_rgb = [123.68, 116.779, 103.939]
@@ -176,26 +177,27 @@ def get_data_rec(rec_train, rec_train_idx, rec_val, rec_val_idx, batch_size, num
         part_index          = kv.rank
     )
     # kept each node to use full val data to make it easy to monitor results
-    val_data = mx.io.ImageRecordIter(
-        path_imgrec         = rec_val,
-        path_imgidx         = rec_val_idx,
-        preprocess_threads  = num_workers,
-        shuffle             = False,
-        batch_size          = batch_size,
-        resize              = 256,
-        label_width         = 1,
-        rand_crop           = False,
-        rand_mirror         = False,
-        data_shape          = (3, 224, 224),
-        mean_r              = mean_rgb[0],
-        mean_g              = mean_rgb[1],
-        mean_b              = mean_rgb[2]
-    )
+    # val_data = mx.io.ImageRecordIter(
+    #     path_imgrec         = rec_val,
+    #     path_imgidx         = rec_val_idx,
+    #     preprocess_threads  = num_workers,
+    #     shuffle             = False,
+    #     batch_size          = batch_size,
+    #     resize              = 256,
+    #     label_width         = 1,
+    #     rand_crop           = False,
+    #     rand_mirror         = False,
+    #     data_shape          = (3, 224, 224),
+    #     mean_r              = mean_rgb[0],
+    #     mean_g              = mean_rgb[1],
+    #     mean_b              = mean_rgb[2]
+    # )
 
     if 'dist' in opt.kvstore and not 'async' in opt.kvstore:
         train_data = mx.io.ResizeIter(train_data, epoch_size)
 
-    return train_data, val_data, batch_fn
+    # return train_data, val_data, batch_fn
+    return train_data, batch_fn
 
 def get_data_loader(data_dir, batch_size, num_workers):
     normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -214,11 +216,11 @@ def get_data_loader(data_dir, batch_size, num_workers):
             batch_size=batch_size,
         )
 
-        val_data = mx.io.NDArrayIter(
-            mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
-            label=mx.nd.array(range(opt.dataset_size)),
-            batch_size=batch_size,
-        )
+        # val_data = mx.io.NDArrayIter(
+        #     mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
+        #     label=mx.nd.array(range(opt.dataset_size)),
+        #     batch_size=batch_size,
+        # )
     else:
         transform_train = transforms.Compose([
             transforms.RandomResizedCrop(224),
@@ -229,32 +231,35 @@ def get_data_loader(data_dir, batch_size, num_workers):
             transforms.ToTensor(),
             normalize
         ])
-        transform_test = transforms.Compose([
-            transforms.Resize(256, keep_ratio=True),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize
-        ])
+        # transform_test = transforms.Compose([
+        #     transforms.Resize(256, keep_ratio=True),
+        #     transforms.CenterCrop(224),
+        #     transforms.ToTensor(),
+        #     normalize
+        # ])
 
         train_data = gluon.data.DataLoader(
             imagenet.classification.ImageNet(data_dir, train=True).transform_first(transform_train),
             batch_size=batch_size, shuffle=True, last_batch='discard', num_workers=num_workers)
-        val_data = gluon.data.DataLoader(
-            imagenet.classification.ImageNet(data_dir, train=False).transform_first(transform_test),
-            batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        # val_data = gluon.data.DataLoader(
+        #     imagenet.classification.ImageNet(data_dir, train=False).transform_first(transform_test),
+        #     batch_size=batch_size, shuffle=False, num_workers=num_workers)'''
 
 
     if 'sync' in opt.kvstore:
         raise ValueError("Need to resize iterator for distributed training to not hang at the end")
     
-    return train_data, val_data, batch_fn
+    # return train_data, val_data, batch_fn
+    return train_data, batch_fn
 
 if opt.use_rec:
-    train_data, val_data, batch_fn = get_data_rec(opt.rec_train, opt.rec_train_idx,
-                                                  opt.rec_val, opt.rec_val_idx,
-                                                  batch_size, num_workers)
+    train_data, batch_fn = get_data_rec(opt.rec_train, opt.rec_train_idx, batch_size, num_workers)
+    # train_data, val_data, batch_fn = get_data_rec(opt.rec_train, opt.rec_train_idx,
+    #                                               opt.rec_val, opt.rec_val_idx,
+    #                                               batch_size, num_workers)
 else:
-    train_data, val_data, batch_fn = get_data_loader(opt.data_dir, batch_size, num_workers)
+    train_data, batch_fn = get_data_loader(opt.data_dir, batch_size, num_workers)
+    # train_data, val_data, batch_fn = get_data_loader(opt.data_dir, batch_size, num_workers)
 
 acc_top1 = mx.metric.Accuracy()
 acc_top5 = mx.metric.TopKAccuracy(5)
@@ -323,16 +328,16 @@ def train(ctx):
         err_top1 = 1-top1
         throughput = int(batch_size * i /(time.time() - tic))
 
-        err_top1_val, err_top5_val = test(ctx, val_data)
+        # err_top1_val, err_top5_val = test(ctx, val_data)
 
         logging.info('[Epoch %d] Train-accuracy=%f'%(epoch, top1))
         logging.info('[Epoch %d] Speed: %d samples/sec\tTime cost=%f'%(epoch, throughput, time.time()-tic))
-        logging.info('[Epoch %d] Validation-accuracy=%f'%(epoch, 1 - err_top1_val))
-        logging.info('[Epoch %d] Validation-top_k_accuracy_5=%f'%(epoch, 1 - err_top5_val))
+        # logging.info('[Epoch %d] Validation-accuracy=%f'%(epoch, 1 - err_top1_val))
+        # logging.info('[Epoch %d] Validation-top_k_accuracy_5=%f'%(epoch, 1 - err_top5_val))
 
-        if save_frequency and err_top1_val < best_val_score and epoch > 50:
-            best_val_score = err_top1_val
-            net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
+        # if save_frequency and err_top1_val < best_val_score and epoch > 50:
+        #     best_val_score = err_top1_val
+        #     net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
 
         if save_frequency and save_dir and (epoch + 1) % save_frequency == 0:
             net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, epoch))
@@ -360,7 +365,7 @@ def main():
             arg_params = None
         mod.fit(train_data,
                 arg_params=arg_params,
-                eval_data = val_data,
+                eval_data = None,
                 num_epoch=opt.num_epochs,
                 kvstore=kv,
                 batch_end_callback = mx.callback.Speedometer(batch_size, max(1, opt.log_interval)),
