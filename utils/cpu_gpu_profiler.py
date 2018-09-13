@@ -97,6 +97,8 @@ class Profiler(object):
 
     def __enter__(self):
         if self.num_gpus < 1:
+            self.p = psutil.Process()
+            self.p.cpu_percent()
             return self
         open("output.csv", 'a').close()
         self.__gpu_monitor_process = subprocess.Popen(
@@ -112,6 +114,7 @@ class Profiler(object):
             raise CommandExecutionError
         cpu_usage = sum(self.cpu_usage) / len(self.cpu_usage)
         self.__ret_dict['cpu_memory_usage'] = cpu_usage
+        self.__ret_dict['cpu_utilization'] = self.p.cpu_percent()
 
         if self.num_gpus < 1:
             return
