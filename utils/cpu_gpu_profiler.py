@@ -57,6 +57,14 @@ def get_cpu_mem_usage_from_process(pid, cpu_usage):
         cpu_usage.append(proc.memory_info().rss / 1024)
 
 
+def get_cpu_utilization_from_process(pid, cpu_util):
+    if not psutil.pid_exists(pid):
+        return
+    proc = psutil.Process(pid)
+    if proc.is_running():
+        cpu_util.append(proc.cpu_percent(interval=1))
+
+
 class RepeatedQuery:
     """Use another a thread to repeatly execute a given function at a given time interval"""
     def __init__(self, interval, function, *args, **kwargs):
@@ -87,17 +95,22 @@ class Profiler(object):
     def __init__(self, ret_dict, num_gpus, process_id):
         self.__ret_dict = ret_dict
         self.num_gpus = num_gpus
-        self.p = psutil.Process(process_id)
         self.cpu_usage = []
+        self.cpu_util = []
         self.cpu_mem_repeat_query = RepeatedQuery(
             interval=5,
             function=get_cpu_mem_usage_from_process,
             pid=process_id,
             cpu_usage=self.cpu_usage
         )
+        self.cpu_util_repeat_query = RepeatedQuery(
+            interval=5,
+            function=get_cpu_utilization_from_process,
+            pid=process_id,
+            cpu_util=self.cpu_util
+        )
 
     def __enter__(self):
-        self.p.cpu_percent()
         if self.num_gpus < 1:
             return self
         open("output.csv", 'a').close()
@@ -114,7 +127,12 @@ class Profiler(object):
             raise CommandExecutionError
         cpu_usage = sum(self.cpu_usage) / len(self.cpu_usage)
         self.__ret_dict['cpu_memory_usage'] = cpu_usage
-        self.__ret_dict['cpu_utilization'] = self.p.cpu_percent()
+
+        self.cpu_util_repeat_query.stop()
+        if len(self.cpu_util) == 0:
+            raise CommandExecutionError
+        cpu_util = sum(self.cpu_util) / len(self.cpu_util)
+        self.__ret_dict['cpu_utilization'] = cpu_util
 
         if self.num_gpus < 1:
             return
