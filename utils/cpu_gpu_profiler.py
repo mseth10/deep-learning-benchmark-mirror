@@ -57,12 +57,16 @@ def get_cpu_mem_usage_from_process(pid, cpu_usage):
         cpu_usage.append(proc.memory_info().rss / 1024)
 
 
-def get_cpu_utilization_from_process(pid, cpu_util):
-    if not psutil.pid_exists(pid):
-        return
-    proc = psutil.Process(pid)
+def get_cpu_utilization_from_process_blocking(proc, cpu_util):
     if proc.is_running():
-        cpu_util.append(proc.cpu_percent(interval=1))
+        try:
+            cpu_util.append(proc.cpu_percent(interval=5))
+        except:
+            print('Process ended')
+
+def get_cpu_utilization_from_process_non_blocking(proc, cpu_util):
+    if proc.is_running():
+        cpu_util.append(proc.cpu_percent())
 
 
 class RepeatedQuery:
@@ -97,6 +101,7 @@ class Profiler(object):
         self.num_gpus = num_gpus
         self.cpu_usage = []
         self.cpu_util = []
+        self.proc = psutil.Process(process_id)
         self.cpu_mem_repeat_query = RepeatedQuery(
             interval=5,
             function=get_cpu_mem_usage_from_process,
@@ -105,8 +110,8 @@ class Profiler(object):
         )
         self.cpu_util_repeat_query = RepeatedQuery(
             interval=5,
-            function=get_cpu_utilization_from_process,
-            pid=process_id,
+            function=get_cpu_utilization_from_process_blocking,
+            proc=self.proc,
             cpu_util=self.cpu_util
         )
 
@@ -131,6 +136,7 @@ class Profiler(object):
         self.cpu_util_repeat_query.stop()
         if len(self.cpu_util) == 0:
             raise CommandExecutionError
+        print (self.cpu_util)
         cpu_util = sum(self.cpu_util) / len(self.cpu_util)
         self.__ret_dict['cpu_utilization'] = cpu_util
 
