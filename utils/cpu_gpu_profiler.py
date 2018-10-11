@@ -138,7 +138,7 @@ class Profiler(object):
             raise CommandExecutionError
         print (self.cpu_util)
         cpu_util = sum(self.cpu_util) / len(self.cpu_util)
-        self.__ret_dict['cpu_utilization'] = cpu_util
+        #self.__ret_dict['cpu_utilization'] = cpu_util
 
         if self.num_gpus < 1:
             return

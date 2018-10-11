@@ -1,11 +1,8 @@
 import argparse, time, logging, os
-
 import numpy as np
-
 import mxnet as mx
 from mxnet import gluon, nd
 from mxnet.gluon.data.vision import transforms
-
 from gluoncv.data import imagenet
 from gluoncv.model_zoo import get_model
 from gluoncv.utils import makedirs
@@ -81,7 +78,7 @@ batch_size = opt.batch_size
 classes = 1000
 
 num_gpus = opt.num_gpus
-context = mx.cpu()
+context = [mx.cpu()]
 num_workers = opt.num_workers
 
 kv = mx.kv.create(opt.kvstore)
@@ -89,18 +86,17 @@ model_name = opt.model
 
 kwargs = {'ctx': context, 'pretrained': opt.use_pretrained, 'classes': classes}
 net = get_model(model_name, **kwargs)
-# net.cast(opt.dtype)
 
 def get_data_rec(rec_val, rec_val_idx, batch_size, num_workers):
     rec_val = os.path.expanduser(rec_val)
     rec_val_idx = os.path.expanduser(rec_val_idx)
     mean_rgb = [123.68, 116.779, 103.939]
-
+    
     def batch_fn(batch, ctx):
         data = gluon.utils.split_and_load(batch.data[0], ctx_list=ctx, batch_axis=0)
         label = gluon.utils.split_and_load(batch.label[0], ctx_list=ctx, batch_axis=0)
         return data, label
-
+    
     val_data = mx.io.ImageRecordIter(
         path_imgrec         = rec_val,
         path_imgidx         = rec_val_idx,
@@ -116,9 +112,7 @@ def get_data_rec(rec_val, rec_val_idx, batch_size, num_workers):
         mean_g              = mean_rgb[1],
         mean_b              = mean_rgb[2]
     )
-
     return val_data, batch_fn
-
 
 def get_data_loader(data_dir, batch_size, num_workers):
     normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -126,14 +120,12 @@ def get_data_loader(data_dir, batch_size, num_workers):
         data = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
         label = gluon.utils.split_and_load(batch[1], ctx_list=ctx, batch_axis=0)
         return data, label
-
     if opt.mode == 'symbolic':
         val_data = mx.io.NDArrayIter(
             mx.nd.random.normal(shape=(opt.dataset_size, 3, 224, 224)),
             label=mx.nd.array(range(opt.dataset_size)),
             batch_size=batch_size,
         )
-    else:
         transform_test = transforms.Compose([
             transforms.Resize(256, keep_ratio=True),
             transforms.CenterCrop(224),
@@ -152,6 +144,30 @@ if opt.use_rec:
 else:
     val_data, batch_fn = get_data_loader(opt.data_dir, batch_size, num_workers)
 
+acc_top1 = mx.metric.Accuracy()
+acc_top5 = mx.metric.TopKAccuracy(5)
+
+def infer(ctx):
+    for i, batch in enumerate(val_data):
+        btic = time.time()
+        data, label = batch_fn(batch, ctx)
+        outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
+        
+        acc_top1.update(label, outputs)
+        acc_top5.update(label, outputs)
+        logging.info('Batch [%d] Top 1 accuracy: %d Top 5 accuracy: %d'%(
+                     i, acc_top1.get()[1], acc_top5.get()[1])) 
+        time_taken = time.time() - btic
+        if i<20:
+            logging.info('warmup_throughput: %d samples/sec warmup_time %f'%(
+                         int(batch_size / time_taken), time_taken))
+        else:
+            logging.info('Speed: %d samples/sec Time cost=%f'%(
+                         int(batch_size / time_taken), time_taken))
+        if i==100:
+            break
+    return
+
 def main():
     if opt.mode == 'symbolic':
         data = mx.sym.var('data')
@@ -163,6 +179,12 @@ def main():
             out = mx.sym.Cast(data=out, dtype=np.float32)
         softmax = mx.sym.SoftmaxOutput(out, name='softmax')
         mod = mx.mod.Module(softmax, context=context)
+        net.hybridize()
+        net(mx.nd.random_normal(shape=(1,3,256,256)))
+        net.export('preresnet50',0)
+        sym, arg_params, aux_params = mx.model.load_checkpoint('preresnet50',0)
+        mod.bind(data_shapes=val_data.provide_data, label_shapes=val_data.provide_label)
+        mod.set_params(arg_params, aux_params)
         mod.score(
             eval_data=val_data,
             eval_metric=mx.metric.Accuracy(),
@@ -171,7 +193,7 @@ def main():
     else:
         if opt.mode == 'hybrid':
             net.hybridize(static_alloc=True, static_shape=True)
-        # train(context)
+        infer(context)
 
 
 if __name__ == '__main__':
