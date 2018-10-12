@@ -152,11 +152,11 @@ def infer(ctx):
         btic = time.time()
         data, label = batch_fn(batch, ctx)
         outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
-        
         acc_top1.update(label, outputs)
-        acc_top5.update(label, outputs)
-        logging.info('Batch [%d] Top 1 accuracy: %d Top 5 accuracy: %d'%(
-                     i, acc_top1.get()[1], acc_top5.get()[1])) 
+        #acc_top5.update(label, outputs)
+        logging.info('Batch [%d]'%(i))
+        logging.info('Top 1 accuracy: %d'%(acc_top1.get()[1])
+        #logging.info('Top 5 accuracy: %d'%(acc_top5.get()[1])
         time_taken = time.time() - btic
         if i<20:
             logging.info('warmup_throughput: %d samples/sec warmup_time %f'%(
@@ -164,8 +164,6 @@ def infer(ctx):
         else:
             logging.info('Speed: %d samples/sec Time cost=%f'%(
                          int(batch_size / time_taken), time_taken))
-        if i==100:
-            break
     return
 
 def main():
