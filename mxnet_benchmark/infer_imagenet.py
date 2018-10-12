@@ -155,8 +155,8 @@ def infer(ctx):
         acc_top1.update(label, outputs)
         #acc_top5.update(label, outputs)
         logging.info('Batch [%d]'%(i))
-        logging.info('Top 1 accuracy: %d'%(acc_top1.get()[1])
-        #logging.info('Top 5 accuracy: %d'%(acc_top5.get()[1])
+        logging.info('Top 1 accuracy: %d'%(acc_top1.get()[1]))
+        #logging.info('Top 5 accuracy: %d'%(acc_top5.get()[1]))
         time_taken = time.time() - btic
         if i<20:
             logging.info('warmup_throughput: %d samples/sec warmup_time %f'%(
